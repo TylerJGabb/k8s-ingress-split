@@ -1,0 +1,171 @@
+# Source: split-sb/templates/backend.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-conf
+data:
+  nginx.conf: |
+    events {}
+    http {
+      server {
+        listen 80;
+        location / {
+          return 200 'hello from be $uri\n';
+        }
+      }
+    }
+---
+# Source: split-sb/templates/frontend.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-conf
+data:
+  nginx.conf: |
+    events {}
+    http {
+      server {
+        listen 80;
+        location / {
+          return 200 'hello from fe $uri\n';
+        }
+      }
+    }
+---
+# Source: split-sb/templates/backend.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  selector:
+    app: backend
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+---
+# Source: split-sb/templates/frontend.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+spec:
+  selector:
+    app: frontend
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+  type: NodePort
+---
+# Source: split-sb/templates/backend.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: conf
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+      volumes:
+      - name: conf
+        configMap:
+          name: backend-conf
+---
+# Source: split-sb/templates/frontend.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: conf
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+      volumes:
+      - name: conf
+        configMap:
+          name: frontend-conf
+---
+# Source: split-sb/templates/spy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spy
+  template:
+    metadata:
+      labels:
+        app: spy
+    spec:
+      containers:
+      - name: spy
+        image: curlimages/curl
+        command: ['sh', '-c', 'while true; do echo hello; sleep 10;done']
+---
+# Source: split-sb/templates/frontend.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-ingress
+  annotations:
+  # nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  defaultBackend:
+    service:
+      name: frontend-service
+      port:
+        number: 80
+  ingressClassName: nginx
+  rules:
+  - host: the-frontend.com
+    http:
+      paths:
+      - path: /
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 80
+      - path: /api
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: backend-service
+            port:
+              number: 80
