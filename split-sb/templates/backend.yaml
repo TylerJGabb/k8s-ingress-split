@@ -9,7 +9,7 @@ data:
       server {
         listen 80;
         location / {
-          return 200 'hello from be';
+          return 200 'hello from be $uri\n';
         }
       }
     }
