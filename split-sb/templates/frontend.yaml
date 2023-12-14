@@ -73,16 +73,16 @@ spec:
     http:
       paths:
       - path: /
-        pathType: Prefix
+        pathType: ImplementationSpecific
         backend:
           service:
             name: {{ .Values.feName }}-service
             port:
               number: 80
       - path: /api
-        pathType: Prefix
+        pathType: ImplementationSpecific
         backend:
           service:
             name: {{ .Values.beName }}-service
             port:
-              number: 80              
+              number: 80   
