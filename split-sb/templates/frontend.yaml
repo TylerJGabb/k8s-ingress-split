@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.feName }}-conf
+data:
+  nginx.conf: |
+    events {}
+    http {
+      server {
+        listen 80;
+        location / {
+          return 200 'hello from fe';
+        }
+      }
+    } 
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.feName }}-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.feName }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.feName }}
+    spec:
+      containers:
+      - name: {{ .Values.feName }}
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: conf
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+      volumes:
+      - name: conf
+        configMap:
+          name: {{ .Values.feName }}-conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.feName }}-service
+spec:
+  selector:
+    app: {{ .Values.feName }}
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+  type: NodePort
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.feName }}-ingress
+  annotations:
+    # nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  defaultBackend:
+    service:
+      name: {{ .Values.feName }}-service
+      port:
+        number: 80
+  ingressClassName: nginx
+  rules:
+  - host: the-frontend.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ .Values.feName }}-service
+            port:
+              number: 80
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ .Values.beName }}-service
+            port:
+              number: 80              

@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spy
+  template:
+    metadata:
+      labels:
+        app: spy
+    spec:
+      containers:
+      - name: spy
+        image: curlimages/curl
+        command: ['sh', '-c', 'while true; do echo hello; sleep 10;done']

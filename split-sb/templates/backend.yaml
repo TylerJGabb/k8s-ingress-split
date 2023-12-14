@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.beName }}-conf
+data:
+  nginx.conf: |
+    events {}
+    http {
+      server {
+        listen 80;
+        location / {
+          return 200 'hello from be';
+        }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.beName }}-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.beName }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.beName }}
+    spec:
+      containers:
+      - name: {{ .Values.beName }}
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: conf
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+      volumes:
+      - name: conf
+        configMap:
+          name: {{ .Values.beName }}-conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.beName }}-service
+spec:
+  selector:
+    app: {{ .Values.beName }}
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+---
